@@ -1,0 +1,48 @@
+---
+- hosts: all
+  tasks:
+    - name: "Getting the Instance IP"
+      setup:
+        filter: ansible_default_ipv4.address
+
+    - name: "Check if DP HA is deployed"
+      shell: "consul members | grep dpha-dpmediation | awk '{print $2}' | cut -d: -f1"
+      become: yes
+      register: dpha_jboss_ip
+
+    - name: "Getting the server hostname"
+      shell: "consul members | grep dpha-dpmediation | awk '{print $1}'"
+      become: yes
+      register: dpha_mediation_hostanme
+
+    - name: "Check the DP-HA jboss"
+      uri:
+        url: "http://{{ dpha_jboss_ip.stdout }}:8080/mediationservice/res/health"
+        method: GET
+        return_content: yes
+      register: dpha_jboss_healthcheck
+
+    - name: "Copy DP-HA Script"
+      copy:
+        src: /var/lib/awx/resource/dp-ha-script/get_jobname_prometheus.sh
+        dest: /tmp
+        mode: 755
+
+    - name: "Getting the JOB name"
+      shell: /bin/bash /tmp/get_jobname_prometheus.sh {{ docker_prometheus }} {{ ansible_default_ipv4.address }}
+      become: yes
+      register: job_prometheus_name
+      ignore_errors: True
+
+    - name: "Copy send metric script"
+      copy:
+        src: /var/lib/awx/resource/dp-ha-script/send_metric.py
+        dest: /tmp
+        mode: 755
+
+    - name: "Sending metric to push gateway"
+      command: python /tmp/send_metric.py {{ job_prometheus_name.stdout }} {{ dpha_jboss_healthcheck.status }} {{ docker_pushgateway }} {{ dpha_mediation_hostname.stdout }}
+      register: metric_out
+
+
+

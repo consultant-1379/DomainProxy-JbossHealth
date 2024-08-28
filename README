@@ -1,0 +1,39 @@
+TASK: NMAAS-6790 - Tested in Staging 01 - EMP Server and POC Environment.
+
+
+
+The current project is compost of 3 scripts:
+
+
+
+- jboss.yml - Ansible script to get the status from jboss and provide this data as a metric to prometheus
+- get_jobname_prometheus.sh - Shell Script to get the Job Name of Prometheus, which defines the Health Check Metrics.
+- send_metric.py - python script to send the metrics to pushgateway, with all the collected information
+          - It performs post operation to the URL with Promethus Ip_Addr, Job_name, Metrics name and Metrics Value.
+          - requests.post('http://{i}:9091/metrics/job/{j}/'.format(i=ip_addr, j=job_name), data='{k} {v}\n'.format(k=metric_name, v=metric_value).encode()
+
+
+
+Preparation:
+
+
+
+- This script was built to run throught the AWX tower;
+- You must to create/have in the Inventory, the servers ENM EMP of the customer that has the DP-HA Fallback solution already deployed;
+- You must to create/have a Project;
+- You must to create/have a Template with the respective Project and Inventory details.
+
+
+
+How to Use
+
+1 - Create a folder dpha-healthcheck into /opt/ericsson/monitoring/data/awx/projects/ and copy the jboss.yml file inside this folder;
+2 - Create a folder dpha-script into /opt/ericsson/monitoring/data/awx/resource/ and copy the get_jobname_prometheus.sh file inside this folder;
+3 - Associate the jboss.yml file in the Template created in the Preparetion step;
+4 - Define in the Template page, 2 extra variables: docker_prometheus and docker_pushgateway
+    4.1 - These variables must to have the server IP from Prometheus and Pushgateway
+    4.2 - Example of the External Variable :
+            - docker_prometheus: 192.168.253.15
+            - docker_pushgateway: 192.168.253.15
+5 - In the Template page, the option "Enable Privilage Escalation" must be enabled;
+
